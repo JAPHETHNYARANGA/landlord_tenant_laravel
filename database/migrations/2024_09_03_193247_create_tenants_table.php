@@ -17,7 +17,10 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('phone_number');
             $table->text('address');
-            $table->string('password');
+            $table->string('password')->nullable();
+            $table->string('house_no');
+            //this commented line has been created in a new migration file. left it here for developer to know the relationship exists
+            // $table->foreignId('property_id')->nullable()->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }

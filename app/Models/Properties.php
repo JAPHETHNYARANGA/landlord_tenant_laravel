@@ -16,6 +16,18 @@ class Properties extends Model
         'price',
         'type',
         'status',
+        'landlord_id',
     ];
+
+    public function landlord()
+    {
+        return $this->belongsTo(Landlord::class);
+    }
+
+    // One property can have many tenants
+    public function tenants()
+    {
+        return $this->hasMany(Tenant::class);
+    }
 
 }

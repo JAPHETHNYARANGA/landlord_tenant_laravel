@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('price');
             $table->string('type');
             $table->string('status');
+            $table->foreignId('landlord_id')->constrained('landlords')->onDelete('cascade');
             $table->timestamps();
         });
     }

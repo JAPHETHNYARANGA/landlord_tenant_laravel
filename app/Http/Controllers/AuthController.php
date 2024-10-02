@@ -4,9 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Admin;
 use App\Models\Landlord;
+use App\Models\SuperAdmin;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -61,6 +67,7 @@ class AuthController extends Controller
                 'landlord' => Landlord::class,
                 'tenant' => Tenant::class,
                 'admin' => Admin::class,
+                'superAdmin' =>SuperAdmin::class
             ];
 
             foreach ($userTypes as $type => $model) {
@@ -86,4 +93,162 @@ class AuthController extends Controller
         }
     }
 
+
+    public function logout(Request $request)
+    {
+        try {
+            // Get the authenticated user
+            $user = $request->user();
+
+            // Revoke the user's token
+            $user->tokens()->delete();
+
+            return response()->json(['success' => true, 'message' => 'Logged out successfully.']);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        }
+    }
+
+       //forget password
+       public function forgotPassword(Request $request)
+        {
+            try {
+                $request->validate([
+                    'email' => 'required|email'
+                ]);
+
+                // Define user types in an array for iteration
+                $userTypes = [
+                    'landlord' => Landlord::class,
+                    'tenant' => Tenant::class,
+                    'admin' => Admin::class,
+                    'superAdmin' => SuperAdmin::class
+                ];
+
+                $user = null;
+                $userType = null;
+
+                // Check each user type to find the user
+                foreach ($userTypes as $type => $model) {
+                    $user = $model::where('email', $request->email)->first();
+                    if ($user) {
+                        $userType = $type;
+                        break;
+                    }
+                }
+
+                if (!$user) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Email not found'
+                    ], 404);
+                }
+
+                // Generate a password reset token
+                $token = Str::random(60);
+
+                // Save token in password_creates table with user type
+                DB::table('password_creates')->updateOrInsert(
+                    ['email' => $user->email],
+                    [
+                        'email' => $user->email,
+                        'token' => $token,
+                        'user_type' => $userType // Add user type here
+                    ]
+                );
+
+                // Send password reset link to user's email
+                Mail::send('password_reset', ['token' => $token], function ($m) use ($user) {
+                    $m->from('info@landlordtenant.com', 'LandlordTenant');
+                    $m->to($user->email, $user->name)->subject('Reset Password');
+                });
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Password reset link sent to your email'
+                ]);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => 'An error occurred',
+                    'error' => $e->getMessage()
+                ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+        }
+
+
+   
+       public function resetPassword(Request $request)
+        {
+            $request->validate([
+                'password' => 'required|confirmed',
+                'token' => 'required|string'
+            ]);
+
+            $tokenData = DB::table('password_creates')->where('token', $request->token)->first();
+
+            if (!$tokenData) {
+                return view('PasswordResponse', [
+                    'success' => false,
+                    'message' => 'Invalid token'
+                ]);
+            }
+
+            // Check user based on user type
+            $user = null;
+            switch ($tokenData->user_type) {
+                case 'admin':
+                    $user = Admin::where('email', $tokenData->email)->first();
+                    break;
+                case 'landlord':
+                    $user = Landlord::where('email', $tokenData->email)->first();
+                    break;
+                case 'tenant':
+                    $user = Tenant::where('email', $tokenData->email)->first();
+                    break;
+                default:
+                    return view('PasswordResponse', [
+                        'success' => false,
+                        'message' => 'User type not recognized'
+                    ]);
+            }
+
+            if (!$user) {
+                return view('PasswordResponse', [
+                    'success' => false,
+                    'message' => 'Email not found'
+                ]);
+            }
+
+            $user->password = Hash::make($request->password);
+            $user->save();
+
+            // Clean up the token
+            DB::table('password_creates')->where('email', $user->email)->delete();
+
+            return view('PasswordResponse', [
+                'success' => true,
+                'message' => 'Password reset successfully'
+            ]);
+        }
+
+       
+     
+
+
+      public function createPassword(Request $request)
+      {
+         
+          // Retrieve the email based on the token
+          $tokenData = DB::table('password_creates')->where('token', $request->token)->first();
+      
+          if (!$tokenData) {
+              return abort(404, 'Invalid token');
+          }
+      
+          return view('set_password', ['token' => $request->token, 'email' => $tokenData->email]);
+      }
 }

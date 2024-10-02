@@ -7,6 +7,9 @@ use App\Models\Landlord;
 use App\Models\Tenant;
 use App\Rules\UniqueEmail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class TenantController extends Controller
 {
@@ -26,6 +29,8 @@ class TenantController extends Controller
         }
     }
 
+   
+
     public function store(Request $request)
     {
         try {
@@ -34,19 +39,41 @@ class TenantController extends Controller
                 'email' => ['required', 'string', 'email', 'max:255', new UniqueEmail([Tenant::class, Landlord::class, Admin::class])],
                 'phone_number' => 'required|string|max:15',
                 'address' => 'required|string',
-                'password' => 'nullable|string|min:8',
             ]);
 
-            $tenant = Tenant::create([
+            // Create admin without a password
+            $tenant  = Tenant::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'phone_number'=>$request->phone_number,
-                'address'=>$request->address,
-                'password' => bcrypt($request->password),
+                'address' => $request->address,
+                'phone_number' => $request->phone_number,
+                'property_id' =>$request->property_id,
+                'house_no' =>$request->house_no
             ]);
 
+            // Generate a password creation token
+            $token = Str::random(60);
+
+            // Save token in a custom table
+            DB::table('password_creates')->updateOrInsert(
+                ['token' => $token],
+                [
+                    'email' => $tenant->email,
+                    'user_type' => 'tenant' 
+                ]
+            );
+
+            // Create the link to set the password
+            $link = route('password.create', ['token' => $token]);
+
+            // Send password creation link to the admin's email
+            Mail::send('password_set_link', ['link' => $link], function ($m) use ($tenant ) {
+                $m->from('info@landlordtenant.com', 'LandlordTenant');
+                $m->to($tenant ->email, $tenant ->name)->subject('Set Password');
+            });
+
             return response()->json([
-                'message' => 'Tenant created successfully',
+                'message' => 'Tenant created successfully. A password creation link has been sent to their email.',
                 'tenant' => $tenant
             ], 201);
 

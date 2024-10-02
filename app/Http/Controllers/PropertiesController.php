@@ -12,8 +12,16 @@ class PropertiesController extends Controller
      */
     public function index()
     {
-        $properties = Properties::all(); // Retrieve all properties
+        try{
+            $properties = Properties::all(); // Retrieve all properties
         return response()->json($properties);
+
+        }catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        } 
     }
 
     /**
@@ -30,17 +38,25 @@ class PropertiesController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required',
-            'location' => 'required',
-            'rooms' => 'required',
-            'price' => 'required',
-            'type' => 'required',
-            'status' => 'required',
-        ]);
+        try{
+            $request->validate([
+                'name' => 'required',
+                'location' => 'required',
+                'rooms' => 'required',
+                'price' => 'required',
+                'type' => 'required',
+                'status' => 'required',
+            ]);
+    
+            $property = Properties::create($request->all()); // Create a new property
+            return response()->json($property, 201); 
 
-        $property = Properties::create($request->all()); // Create a new property
-        return response()->json($property, 201); // Return created property with status code 201
+        }catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -48,13 +64,22 @@ class PropertiesController extends Controller
      */
     public function show(string $id)
     {
-        $property = Properties::find($id); // Find property by id
+        try{
+            $property = Properties::find($id); // Find property by id
 
         if (!$property) {
             return response()->json(['message' => 'Property not found'], 404);
         }
 
         return response()->json($property); // Return the property
+
+        }catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        } 
+        
     }
 
     /**
@@ -71,23 +96,31 @@ class PropertiesController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'location' => 'sometimes|string|max:255',
-            'rooms' => 'sometimes|integer',
-            'price' => 'sometimes|numeric',
-            'type' => 'sometimes|string|max:50',
-            'status' => 'sometimes|string|max:50',
-        ]);
-
-        $property = Properties::find($id); // Find property by id
-
-        if (!$property) {
-            return response()->json(['message' => 'Property not found'], 404);
-        }
-
-        $property->update($request->all()); // Update the property
-        return response()->json($property); // Return the updated property
+        try{
+            $request->validate([
+                'name' => 'sometimes|string|max:255',
+                'location' => 'sometimes|string|max:255',
+                'rooms' => 'sometimes|integer',
+                'price' => 'sometimes|numeric',
+                'type' => 'sometimes|string|max:50',
+                'status' => 'sometimes|string|max:50',
+            ]);
+    
+            $property = Properties::find($id); // Find property by id
+    
+            if (!$property) {
+                return response()->json(['message' => 'Property not found'], 404);
+            }
+    
+            $property->update($request->all()); // Update the property
+            return response()->json($property); // Return the updated property
+        }catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        } 
+        
     }
 
     /**
@@ -95,7 +128,8 @@ class PropertiesController extends Controller
      */
     public function destroy(string $id)
     {
-        $property = Properties::find($id); // Find property by id
+        try{
+            $property = Properties::find($id); // Find property by id
 
         if (!$property) {
             return response()->json(['message' => 'Property not found'], 404);
@@ -103,5 +137,13 @@ class PropertiesController extends Controller
 
         $property->delete(); // Delete the property
         return response()->json(['message' => 'Property deleted successfully']); // Return success message
+
+        }catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        } 
+        
     }
 }

@@ -4,17 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Laravel\Sanctum\HasApiTokens;
 
-class Admin extends Model
+class password_creates extends Model
 {
-    use HasApiTokens,HasFactory;
+    use HasFactory;
 
     protected $fillable = [
-        'name',
         'email',
-        'password',
-        'phone_number',
-        'address',
+        'token',
+        'user_type'
     ];
 }
